@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0a0a0a;
+  color: #f0f0f0;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-thumb { background: #199a8e; border-radius: 4px; }
+
+.card {
+  background: #141414;
+  border: 1px solid #1e1e1e;
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: #199a8e33; }
+
+.input-field {
+  background: #141414;
+  border: 1px solid #252525;
+  color: #f0f0f0;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.input-field:focus {
+  outline: none;
+  border-color: #199a8e;
+  box-shadow: 0 0 0 3px #199a8e20;
+}
+.input-field::placeholder { color: #3a3a3a; }
+
+.btn-primary {
+  background: #199a8e;
+  color: white;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+.btn-primary:hover:not(:disabled) {
+  background: #147b72;
+  box-shadow: 0 0 24px #199a8e44;
+  transform: translateY(-1px);
+}
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid #199a8e;
+  color: #199a8e;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+.btn-outline:hover { background: #199a8e15; }
