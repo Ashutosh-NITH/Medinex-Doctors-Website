@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Reset */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* 🌙 DARK THEME (default) */
+:root {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --card: #1e293b;
+  --border: #334155;
+
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-faint: #64748b;
+
+  --primary: #199a8e;
+  --primary-bg: #199a8e15;
+  --primary-border: #199a8e33;
+}
+
+/* ☀️ LIGHT THEME */
+.light {
+  --bg: #ebf7f6;
+  --surface: #ffffff;
+  --card: #f0faf9;
+  --border: #d1ece8;
+
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+}
+
+/* Apply globally */
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+}
+
+/* Reusable classes */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+.input-field {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+}
