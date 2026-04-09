@@ -11,11 +11,18 @@ export interface DoctorSession {
   qualifyYear: string
 }
 
+
 export interface ReportMeta {
   id: number
   cid: string
   patientAddress: string
   uploadedAt: number
+  signatures?: Array<{
+    doctor_address: string
+    doctor_pubkey: string
+    signature: string
+    signed_at: string | number
+  }>
 }
 
 export interface GrantedReport {

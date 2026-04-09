@@ -138,11 +138,10 @@ export default function DashboardPage() {
     setLoadingSigReqs(false)
   }
 
-// Add this function alongside your existing `search()`:
 async function searchByAddress(target: string) {
   const trimmed = target.trim()
   if (!trimmed) return
-  setAddr(trimmed)           // update the input field visually
+  setAddr(trimmed)
   setSearching(true); setSearchErr(''); setReports([])
   try {
     const valid = await isPatientRegistered(trimmed)
@@ -151,14 +150,37 @@ async function searchByAddress(target: string) {
     const rows: ReportMeta[] = []
     for (const id of ids) {
       const r = await getReportById(id)
-      if (r) rows.push({ id: r.id, cid: r.cid, patientAddress: r.patientAddress, uploadedAt: r.uploadedAt })
+      if (!r) continue
+      const sigs = await getSignatures(id).catch(() => [])
+      rows.push({
+        id: r.id, cid: r.cid,
+        patientAddress: r.patientAddress,
+        uploadedAt: r.uploadedAt,
+        signatures: sigs
+      })
     }
     setReports(rows.sort((a, b) => b.uploadedAt - a.uploadedAt))
   } catch { setSearchErr('Failed to fetch reports.') }
   setSearching(false)
 }
 
-// Also update your existing search() to call the helper:
+async function searchByReportId() {
+  const id = parseInt(reportIdInput.trim())
+  if (!id || id < 1) { setSearchErr('Please enter a valid Report ID.'); return }
+  setSearching(true); setSearchErr(''); setSingleReport(null); setReports([])
+  try {
+    const r = await getReportById(id)
+    if (!r) { setSearchErr(`No report found with ID #${id}.`); setSearching(false); return }
+    const sigs = await getSignatures(id).catch(() => [])
+    setSingleReport({
+      id: r.id, cid: r.cid,
+      patientAddress: r.patientAddress,
+      uploadedAt: r.uploadedAt,
+      signatures: sigs
+    })
+  } catch { setSearchErr(`Failed to fetch Report #${id}.`) }
+  setSearching(false)
+}
 async function search() {
   await searchByAddress(addr)
 }
@@ -249,19 +271,7 @@ async function search() {
       </div>
     );
   }
-  // In DashboardPage — add alongside search() and searchByAddress()
-async function searchByReportId() {
-  const id = parseInt(reportIdInput.trim())
-  if (!id || id < 1) { setSearchErr('Please enter a valid Report ID.'); return }
-  setSearching(true); setSearchErr(''); setSingleReport(null); setReports([])
-  try {
-    const r = await getReportById(id)
-    if (!r) { setSearchErr(`No report found with ID #${id}.`); setSearching(false); return }
-    setSingleReport({ id: r.id, cid: r.cid, patientAddress: r.patientAddress, uploadedAt: r.uploadedAt })
-  } catch { setSearchErr(`Failed to fetch Report #${id}.`) }
-  setSearching(false)
-}
-  if (!session) return null
+ if (!session) return null
 
   const NAV: { id: Tab; icon: any; label: string; badge?: number }[] = [
     { id: 'search',     icon: Search,   label: 'Search Patient' },
@@ -537,42 +547,84 @@ async function searchByReportId() {
                   {searchErr && <ErrBox msg={searchErr} />}
 
                   {/* ── Single Report Result (Report ID mode) ── */}
-                  {singleReport && (
-                    <div>
-                      <h2 className="font-semibold text-lg mb-4" style={{ color: C.text }}>Report found</h2>
-                      <div className="rounded-2xl p-4 flex items-center gap-3"
-                        style={{ background: C.surface, border: `1px solid ${C.border}` }}>
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                          style={{ background: C.primaryBg }}>
-                          <FileText size={16} style={{ color: C.primary }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-sm" style={{ color: C.text }}>Report #{singleReport.id}</div>
-                          <div className="text-xs font-mono truncate mt-0.5" style={{ color: C.textFaint }}>{singleReport.cid}</div>
-                          <div className="text-xs mt-1" style={{ color: C.textMuted }}>
-                            Patient: <span className="font-mono">{short(singleReport.patientAddress)}</span>
-                          </div>
-                          <div className="text-xs mt-0.5 flex items-center gap-1" style={{ color: C.textMuted }}>
-                            <Clock size={10} /> {fmtDate(singleReport.uploadedAt)}
-                          </div>
-                        </div>
-                        {reqDone === singleReport.id ? (
-                          <span className="text-xs flex items-center gap-1 px-2 py-1.5 rounded-xl shrink-0"
-                            style={{ background: '#f0fdf4', color: '#16a34a' }}>
-                            <CheckCircle2 size={12} /> Done
-                          </span>
-                        ) : (
-                          <button onClick={() => doRequest(singleReport)} disabled={requesting === singleReport.id}
-                            className="btn-primary px-3 py-1.5 rounded-xl text-xs flex items-center gap-1 shrink-0">
-                            {requesting === singleReport.id
-                              ? <Loader size={11} className="animate-spin" />
-                              : <><Shield size={11} /><span className="hidden sm:inline"> Request</span></>}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                  {/* ── Single Report Result (Report ID mode) ── */}
+{singleReport && (
+  <div>
+    <h2 className="font-semibold text-lg mb-4" style={{ color: C.text }}>Report found</h2>
+    <div className="rounded-2xl p-4"
+      style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+      <div className="flex items-start gap-3">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: C.primaryBg }}>
+          <FileText size={16} style={{ color: C.primary }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-sm" style={{ color: C.text }}>Report #{singleReport.id}</span>
+            {singleReport.signatures && singleReport.signatures.length > 0 ? (
+              <span className="text-xs flex items-center gap-1 px-2 py-0.5 rounded-full"
+                style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>
+                <BadgeCheck size={10} /> Digitally signed
+              </span>
+            ) : (
+              <span className="text-xs px-2 py-0.5 rounded-full"
+                style={{ background: C.card, color: C.textFaint, border: `1px solid ${C.border}` }}>
+                Not signed
+              </span>
+            )}
+          </div>
+          <div className="text-xs font-mono truncate mt-0.5" style={{ color: C.textFaint }}>{singleReport.cid}</div>
+          <div className="text-xs mt-1" style={{ color: C.textMuted }}>
+            Patient: <span className="font-mono">{short(singleReport.patientAddress)}</span>
+          </div>
+          <div className="text-xs mt-0.5 flex items-center gap-1" style={{ color: C.textMuted }}>
+            <Clock size={10} /> {fmtDate(singleReport.uploadedAt)}
+          </div>
 
+          {/* Signatures list */}
+          {singleReport.signatures && singleReport.signatures.length > 0 && (
+            <div className="mt-3 rounded-xl p-2.5" style={{ background: C.card, border: `1px solid ${C.borderLight}` }}>
+              <div className="text-xs font-medium mb-2" style={{ color: C.textFaint }}>Signed by</div>
+              <div className="space-y-1.5">
+                {singleReport.signatures.map((sig, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                      style={{ background: C.primaryBg }}>
+                      <User size={10} style={{ color: C.primary }} />
+                    </div>
+                    <span className="font-mono text-xs truncate" style={{ color: C.text }}>
+                      {sig.doctor_address}
+                    </span>
+                    <span className="text-xs shrink-0" style={{ color: C.textFaint }}>
+                      · {fmtDate(Number(sig.signed_at))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Request button — aligned to top */}
+        <div className="shrink-0">
+          {reqDone === singleReport.id ? (
+            <span className="text-xs flex items-center gap-1 px-2 py-1.5 rounded-xl"
+              style={{ background: '#f0fdf4', color: '#16a34a' }}>
+              <CheckCircle2 size={12} /> Done
+            </span>
+          ) : (
+            <button onClick={() => doRequest(singleReport)} disabled={requesting === singleReport.id}
+              className="btn-primary px-3 py-1.5 rounded-xl text-xs flex items-center gap-1">
+              {requesting === singleReport.id
+                ? <Loader size={11} className="animate-spin" />
+                : <><Shield size={11} /><span className="hidden sm:inline"> Request</span></>}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+)}
                   {/* ── Address Search Results (unchanged) ── */}
                   {reports.length > 0 && (
                     <div>
@@ -588,12 +640,50 @@ async function searchByReportId() {
                               <FileText size={16} style={{ color: C.primary }} />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="font-semibold text-sm" style={{ color: C.text }}>Report #{r.id}</div>
-                              <div className="text-xs font-mono truncate mt-0.5" style={{ color: C.textFaint }}>{r.cid}</div>
-                              <div className="text-xs mt-1 flex items-center gap-1" style={{ color: C.textMuted }}>
-                                <Clock size={10} /> {fmtDate(r.uploadedAt)}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-semibold text-sm" style={{ color: C.text }}>Report #{r.id}</span>
+                                  {r.signatures && r.signatures.length > 0 ? (
+                                    <span className="text-xs flex items-center gap-1 px-2 py-0.5 rounded-full"
+                                      style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>
+                                      <BadgeCheck size={10} /> Digitally signed
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs px-2 py-0.5 rounded-full"
+                                      style={{ background: C.card, color: C.textFaint, border: `1px solid ${C.border}` }}>
+                                      Not signed
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs font-mono truncate mt-0.5" style={{ color: C.textFaint }}>{r.cid}</div>
+                                <div className="text-xs mt-1 flex items-center gap-1" style={{ color: C.textMuted }}>
+                                  <Clock size={10} /> {fmtDate(r.uploadedAt)}
+                                </div>
+
+                                {/* Signatures list */}
+                                {r.signatures && r.signatures.length > 0 && (
+                                  <div className="mt-3 rounded-xl p-2.5" style={{ background: C.card, border: `1px solid ${C.borderLight}` }}>
+                                    <div className="text-xs font-medium mb-2" style={{ color: C.textFaint }}>
+                                      Signed by
+                                    </div>
+                                    <div className="space-y-1.5">
+                                      {r.signatures.map((sig, i) => (
+                                        <div key={i} className="flex items-center gap-2">
+                                          <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                                            style={{ background: C.primaryBg }}>
+                                            <User size={10} style={{ color: C.primary }} />
+                                          </div>
+                                          <span className="font-mono text-xs truncate" style={{ color: C.text }}>
+                                            {sig.doctor_address}
+                                          </span>
+                                          <span className="text-xs shrink-0" style={{ color: C.textFaint }}>
+                                            · {fmtDate(Number(sig.signed_at))}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                            </div>
                             {reqDone === r.id ? (
                               <span className="text-xs flex items-center gap-1 px-2 py-1.5 rounded-xl shrink-0"
                                 style={{ background: '#f0fdf4', color: '#16a34a' }}>
